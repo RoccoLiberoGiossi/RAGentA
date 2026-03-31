@@ -13,3 +13,5 @@ sentence-transformers
 tqdm
 nltk
 accelerate
+openai
+vllm

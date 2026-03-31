@@ -4,9 +4,6 @@ import time
 import datetime
 import os
 import logging
-import numpy as np
-from tqdm import tqdm
-import re
 import random
 import string
 
@@ -31,30 +28,48 @@ logger = logging.getLogger("BASIC_RAG_Runner")
 from hybrid_retriever import HybridRetriever
 
 class BasicRAG:
-    def __init__(self, retriever, agent_model=None, top_k=10, falcon_api_key=None):
+    def __init__(
+        self,
+        retriever,
+        agent_model=None,
+        top_k=10,
+        interface_type="huggingface",
+        api_key=None,
+        api_base=None,
+        is_local=True,
+    ):
         """
         Basic RAG implementation without multi-agent filtering.
-        
+
         Args:
             retriever: Document retriever instance
             agent_model: Model name or pre-initialized agent
             top_k: Number of documents to retrieve and use
+            interface_type: Interface to use ('huggingface', 'vllm', or 'openai')
+            api_key: API key for vLLM or OpenAI (if applicable)
+            api_base: API base URL for vLLM or OpenAI (if applicable)
+            is_local: Whether to use local vLLM (default True)
         """
         self.retriever = retriever
         self.top_k = top_k
-        
+
         # Initialize LLM agent
         if isinstance(agent_model, str):
-            if "falcon" in agent_model.lower() and falcon_api_key:
-                # Initialize Falcon agent if using Falcon API
-                from api_agent import FalconAgent
-                self.agent = FalconAgent(api_key=falcon_api_key)
-                logger.info(f"Using Falcon agent with API")
-            else:
-                # Initialize local LLM agent
-                from local_agent import LLMAgent
-                self.agent = LLMAgent(agent_model)
-                logger.info(f"Using local LLM agent with model {agent_model}")
+            from llm_agents import get_llm_agent
+
+            # Map arguments for factory
+            kwargs = {}
+            if interface_type.lower() == "openai":
+                kwargs = {"api_key": api_key, "api_base": api_base}
+            elif interface_type.lower() == "vllm":
+                kwargs = {"api_key": api_key, "api_base": api_base, "is_local": is_local}
+            elif interface_type.lower() == "huggingface":
+                kwargs = {}
+
+            self.agent = get_llm_agent(interface_type, agent_model, **kwargs)
+            logger.info(
+                f"Using {interface_type} agent with model {agent_model} for basic RAG"
+            )
         else:
             # Use pre-initialized agent
             self.agent = agent_model
@@ -207,16 +222,25 @@ def write_result_to_json(result, output_file):
 def main():
     parser = argparse.ArgumentParser(description="Basic RAG with Hybrid Retrieval")
     parser.add_argument(
-        "--model",
-        type=str,
-        default="tiiuae/falcon-3-10b-instruct",
-        help="Model for LLM agent"
+        "--model", type=str, default="tiiuae/falcon-3-10b-instruct", help="Model for LLM agent"
     )
     parser.add_argument(
-        "--falcon_api_key",
+        "--interface",
         type=str,
-        default=None,
-        help="API key for Falcon API (only needed if using Falcon API)"
+        default="huggingface",
+        choices=["huggingface", "vllm", "openai"],
+        help="Interface type for LLM agents",
+    )
+    parser.add_argument(
+        "--api_key", type=str, default=None, help="API key for vLLM or OpenAI"
+    )
+    parser.add_argument(
+        "--api_base", type=str, default=None, help="API base URL for vLLM or OpenAI"
+    )
+    parser.add_argument(
+        "--remote_vllm",
+        action="store_true",
+        help="Use remote vLLM via OpenAI-compatible API instead of local vLLM",
     )
     parser.add_argument(
         "--alpha", type=float, default=0.7, help="Weight for semantic search (0-1)"
@@ -251,14 +275,17 @@ def main():
     logger.info(f"Initializing hybrid retriever with alpha={args.alpha}...")
     retriever = HybridRetriever(alpha=args.alpha, top_k=args.top_k)
     
-    # Initialize BasicRAG
-    logger.info(f"Initializing basic RAG with top_k={args.top_k}...")
-    rag = BasicRAG(retriever, agent_model=args.model, top_k=args.top_k)
-
-    # Initialize BasicRAG with falcon_api_key parameter
-    logger.info(f"Initializing basic RAG with top_k={args.top_k}...")
-    rag = BasicRAG(retriever, agent_model=args.model, top_k=args.top_k, 
-                 falcon_api_key=args.falcon_api_key)
+    # Initialize Basic RAG
+    logger.info("Initializing Basic RAG...")
+    rag = BasicRAG(
+        retriever,
+        agent_model=args.model,
+        top_k=args.top_k,
+        interface_type=args.interface,
+        api_key=args.api_key,
+        api_base=args.api_base,
+        is_local=not args.remote_vllm,
+    )
 
     # Create output directory
     os.makedirs(args.output_dir, exist_ok=True)

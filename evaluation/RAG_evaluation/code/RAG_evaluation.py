@@ -20,7 +20,6 @@ import os
 import pandas as pd
 import numpy as np
 from tqdm import tqdm
-from pathlib import Path
 from datetime import datetime
 from openai import OpenAI
 from concurrent.futures import ThreadPoolExecutor

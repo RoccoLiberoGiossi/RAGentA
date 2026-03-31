@@ -1,9 +1,7 @@
 import numpy as np
 from tqdm import tqdm
 import re
-import copy
 import logging
-from typing import List, Dict, Tuple, Any
 import os
 import datetime
 import random
@@ -640,8 +638,10 @@ class RAGENTA:
         retriever,
         agent_model=None,
         n=0.0,
-        falcon_api_key=None,
-        pinecone_api_key=None,
+        interface_type="huggingface",
+        api_key=None,
+        api_base=None,
+        is_local=True,
     ):
         """
         Enhanced RAGentA framework implementation with citation tracking and judgment.
@@ -650,38 +650,37 @@ class RAGENTA:
             retriever: Document retriever instance (Pinecone or other)
             agent_model: Model name or pre-initialized agents
             n: Hyperparameter for adaptive judge bar adjustment (default 0.0)
-            falcon_api_key: API key for Falcon model (if using Falcon)
-            pinecone_api_key: API key for Pinecone (if not using a pre-initialized retriever)
+            interface_type: Interface to use ('huggingface', 'vllm', or 'openai')
+            api_key: API key for vLLM or OpenAI (if applicable)
+            api_base: API base URL for vLLM or OpenAI (if applicable)
+            is_local: Whether to use local vLLM (default True)
         """
         self.retriever = retriever
         self.n = n  # Hyperparameter for adaptive judge bar adjustment
 
         # Save these for potential reuse in Agent4
         self.agent_model = agent_model
-        self.falcon_api_key = falcon_api_key
 
         # Initialize agents based on provided parameters
         if isinstance(agent_model, str):
-            if "falcon" in agent_model.lower() and falcon_api_key:
-                # Initialize Falcon agents
-                from api_agent import FalconAgent
+            from llm_agents import get_llm_agent
 
-                self.agent1 = FalconAgent(falcon_api_key)  # Predictor
-                self.agent2 = (
-                    self.agent1
-                )  # Judge (reuse the same instance to save resources)
-                self.agent3 = self.agent1  # Final-Predictor
-                self.agent4 = self.agent1  # Claim Judge
-                logger.info(f"Using Falcon agents with API for all four agent roles")
-            else:
-                # Initialize local LLM agents
-                from local_agent import LLMAgent
+            # Map arguments for factory
+            kwargs = {}
+            if interface_type.lower() == "openai":
+                kwargs = {"api_key": api_key, "api_base": api_base}
+            elif interface_type.lower() == "vllm":
+                kwargs = {"api_key": api_key, "api_base": api_base, "is_local": is_local}
+            elif interface_type.lower() == "huggingface":
+                kwargs = {}
 
-                self.agent1 = LLMAgent(agent_model)  # Predictor
-                self.agent2 = self.agent1  # Judge
-                self.agent3 = self.agent1  # Final-Predictor
-                self.agent4 = self.agent1  # Claim Judge
-                logger.info(f"Using local LLM agents with model {agent_model}")
+            self.agent1 = get_llm_agent(interface_type, agent_model, **kwargs)
+            self.agent2 = self.agent1
+            self.agent3 = self.agent1
+            self.agent4 = self.agent1
+            logger.info(
+                f"Using {interface_type} agents with model {agent_model} for all four agent roles"
+            )
         else:
             # Use pre-initialized agent
             self.agent1 = agent_model  # Predictor

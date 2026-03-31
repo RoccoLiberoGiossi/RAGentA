@@ -3,7 +3,6 @@ import json
 import time
 import datetime
 import os
-from tqdm import tqdm
 import logging
 import random
 import string
@@ -197,6 +196,24 @@ def main():
         help="Model for LLM agents",
     )
     parser.add_argument(
+        "--interface",
+        type=str,
+        default="huggingface",
+        choices=["huggingface", "vllm", "openai"],
+        help="Interface type for LLM agents",
+    )
+    parser.add_argument(
+        "--api_key", type=str, default=None, help="API key for vLLM or OpenAI"
+    )
+    parser.add_argument(
+        "--api_base", type=str, default=None, help="API base URL for vLLM or OpenAI"
+    )
+    parser.add_argument(
+        "--remote_vllm",
+        action="store_true",
+        help="Use remote vLLM via OpenAI-compatible API instead of local vLLM",
+    )
+    parser.add_argument(
         "--n", type=float, default=0.5, help="Adjustment factor for adaptive judge bar"
     )
     parser.add_argument(
@@ -234,7 +251,15 @@ def main():
 
     # Initialize RAGentA
     logger.info(f"Initializing enhanced RAGentA with n={args.n}...")
-    ragenta = RAGENTA(retriever, agent_model=args.model, n=args.n)
+    ragenta = RAGENTA(
+        retriever,
+        agent_model=args.model,
+        n=args.n,
+        interface_type=args.interface,
+        api_key=args.api_key,
+        api_base=args.api_base,
+        is_local=not args.remote_vllm,
+    )
 
     # Create output directories
     os.makedirs(args.output_dir, exist_ok=True)
