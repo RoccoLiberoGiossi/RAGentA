@@ -29,6 +29,7 @@ logger = logging.getLogger("RAGENTA_Runner")
 # Import our components
 from RAGentA import RAGENTA
 from hybrid_retriever import HybridRetriever
+from ragenta_graph import create_ragenta_graph
 
 
 def load_datamorgana_questions(file_path):
@@ -214,6 +215,11 @@ def main():
         help="Use remote vLLM via OpenAI-compatible API instead of local vLLM",
     )
     parser.add_argument(
+        "--use_graph",
+        action="store_true",
+        help="Use LangGraph-based implementation instead of script-based",
+    )
+    parser.add_argument(
         "--n", type=float, default=0.5, help="Adjustment factor for adaptive judge bar"
     )
     parser.add_argument(
@@ -260,6 +266,12 @@ def main():
         api_base=args.api_base,
         is_local=not args.remote_vllm,
     )
+    
+    if args.use_graph:
+        logger.info("Using LangGraph-based RAGentA...")
+        graph = create_ragenta_graph()
+    else:
+        graph = None
 
     # Create output directories
     os.makedirs(args.output_dir, exist_ok=True)
@@ -275,7 +287,25 @@ def main():
 
         try:
             # Process the query
-            answer, debug_info = ragenta.answer_query(args.single_question)
+            if args.use_graph:
+                initial_state = {
+                    "query": args.single_question,
+                    "retriever": retriever,
+                    "agents": {
+                        "agent1": ragenta.agent1,
+                        "agent2": ragenta.agent2,
+                        "agent3": ragenta.agent3,
+                        "agent4": ragenta.agent4,
+                    },
+                    "n_factor": args.n,
+                    "iteration": 0,
+                    "excluded_ids": set(),
+                }
+                final_state = graph.invoke(initial_state)
+                answer = final_state["final_answer"]
+                debug_info = final_state # The state itself contains all info
+            else:
+                answer, debug_info = ragenta.answer_query(args.single_question)
 
             # Calculate processing time
             process_time = time.time() - start_time
@@ -338,7 +368,25 @@ def main():
 
         try:
             # Process the query
-            answer, debug_info = ragenta.answer_query(item["question"])
+            if args.use_graph:
+                initial_state = {
+                    "query": item["question"],
+                    "retriever": retriever,
+                    "agents": {
+                        "agent1": ragenta.agent1,
+                        "agent2": ragenta.agent2,
+                        "agent3": ragenta.agent3,
+                        "agent4": ragenta.agent4,
+                    },
+                    "n_factor": args.n,
+                    "iteration": 0,
+                    "excluded_ids": set(),
+                }
+                final_state = graph.invoke(initial_state)
+                answer = final_state["final_answer"]
+                debug_info = final_state
+            else:
+                answer, debug_info = ragenta.answer_query(item["question"])
 
             # Calculate processing time
             process_time = time.time() - start_time

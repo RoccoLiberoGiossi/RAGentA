@@ -15,3 +15,6 @@ nltk
 accelerate
 openai
 vllm
+langgraph
+langchain
+langchain-openai

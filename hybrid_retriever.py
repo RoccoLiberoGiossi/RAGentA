@@ -3,17 +3,18 @@ import boto3
 from pinecone import Pinecone
 from opensearchpy import OpenSearch, AWSV4SignerAuth, RequestsHttpConnection
 from transformers import AutoModel, AutoTokenizer
+import os
 
 # AWS configuration
-AWS_PROFILE_NAME = "sigir-participant"
-AWS_REGION_NAME = "us-east-1"
+AWS_PROFILE_NAME = os.getenv("AWS_PROFILE", "sigir-participant")
+AWS_REGION_NAME = os.getenv("AWS_REGION", "eu-north-1")
 
 # Pinecone configuration
-PINECONE_INDEX_NAME = "fineweb10bt-512-0w-e5-base-v2"
-PINECONE_NAMESPACE = "default"
+PINECONE_INDEX_NAME = os.getenv("PINECONE_INDEX_NAME", "fineweb10bt-512-0w-e5-base-v2")
+PINECONE_NAMESPACE = os.getenv("PINECONE_NAMESPACE", "default")
 
 # OpenSearch configuration
-OPENSEARCH_INDEX_NAME = "fineweb10bt-512-0w-e5-base-v2"
+OPENSEARCH_INDEX_NAME = os.getenv("OPENSEARCH_INDEX_NAME", "fineweb10bt-512-0w-e5-base-v2")
 
 
 class HybridRetriever:

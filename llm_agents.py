@@ -174,7 +174,10 @@ class VLLMAgent(BaseLLMAgent):
         if is_local:
             from vllm import LLM
             print(f"Initializing local vLLM with model: {model_name}")
-            self.llm = LLM(model=model_name, trust_remote_code=True)
+            self.llm = LLM(
+                model=model_name, 
+                trust_remote_code=True,
+            )
         else:
             from openai import OpenAI
             self.api_key = api_key or os.environ.get("VLLM_API_KEY", "EMPTY")

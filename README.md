@@ -3,6 +3,7 @@ RAGentA, a multi-agent retrieval-augmented generation (RAG) framework for attrib
 
 ## Features
 - **Multi-Agent Architecture**: Uses multiple specialized agents for document retrieval, relevance judgment, answer generation, and claim analysis
+- **LangGraph Integration**: Now supports LangGraph-based implementation for more complex agent interactions (use `--use_graph`)
 - **Hybrid Retrieval**: Combines semantic (dense) and keyword (sparse) search for better document retrieval
 - **Citation Tracking**: Automatically tracks citations in generated answers to ensure factual accuracy
 - **Claim Analysis**: Analyzes individual claims in answers to ensure relevance and identify knowledge gaps
@@ -73,6 +74,10 @@ python run_RAGentA.py --model tiiuae/Falcon3-10B-Instruct --n 0.5 --alpha 0.65 -
 ```
 ### Parameters
 - `--model`: Model name or path (default: "tiiuae/falcon-3-10b-instruct")
+- `--interface`: Interface type for LLM agents (choices: `huggingface`, `vllm`, `openai`, default: `huggingface`)
+- `--api_key`: API key for vLLM or OpenAI
+- `--api_base`: API base URL for vLLM or OpenAI
+- `--use_graph`: Use LangGraph-based implementation (default: False)
 - `--n`: Adjustment factor for adaptive judge bar (default: 0.5)
 - `--alpha`: Weight for semantic search vs. keyword search (0-1, default: 0.65)
 - `--top_k`: Number of documents to retrieve (default: 20)
